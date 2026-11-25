@@ -48,6 +48,9 @@ class Store(ctx: Context) {
     fun addWater(ml: Int) = saveWater(water() + WaterLog(System.currentTimeMillis(), ml))
     fun undoWater() = saveWater(water().dropLast(1))
 
+    fun apiKey(): String = sp.getString("apikey", "") ?: ""
+    fun saveApiKey(k: String) = sp.edit().putString("apikey", k).apply()
+
     fun profile(): Profile? {
         val s = sp.getString("profile", null) ?: return null
         val o = JSONObject(s)

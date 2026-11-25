@@ -61,7 +61,7 @@ fun App(hc: HealthConnectManager, store: Store) {
     val bump: () -> Unit = { version++ }
     Scaffold(bottomBar = {
         NavigationBar {
-            listOf("Hoy", "Agregar", "Historial", "Perfil").forEachIndexed { i, n ->
+            listOf("Hoy", "Agregar", "Historial", "Progreso", "Perfil").forEachIndexed { i, n ->
                 NavigationBarItem(selected = tab == i, onClick = { tab = i }, icon = {}, label = { Text(n) })
             }
         }
@@ -71,6 +71,7 @@ fun App(hc: HealthConnectManager, store: Store) {
                 0 -> TodayScreen(hc, store, version, bump)
                 1 -> AddScreen(hc, store, bump)
                 2 -> HistoryScreen(store, version)
+                3 -> ProgressScreen(store, version)
                 else -> ProfileScreen(store, bump)
             }
         }
@@ -169,6 +170,8 @@ fun AddScreen(hc: HealthConnectManager, store: Store, bump: () -> Unit) {
     Page {
         Text("Agregar comida", style = MaterialTheme.typography.headlineSmall)
         if (msg.isNotEmpty()) Text(msg, color = MaterialTheme.colorScheme.primary)
+        AiSection(store) { m -> save(m) }
+        HorizontalDivider()
         OutlinedTextField(query, { query = it; selected = null }, label = { Text("Buscar alimento") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
         if (query.isNotBlank() && selected == null) {
             FOODS.filter { it.name.contains(query, ignoreCase = true) }.take(6).forEach { food ->
@@ -265,6 +268,8 @@ fun ProfileScreen(store: Store, bump: () -> Unit) {
             }
         }) { Text("Guardar perfil") }
         if (msg.isNotEmpty()) Text(msg, color = MaterialTheme.colorScheme.primary)
+        HorizontalDivider()
+        ApiKeyField(store)
         Text("Actualiza tu peso cada semana para que las metas se mantengan al día.", style = MaterialTheme.typography.bodySmall)
     }
 }
