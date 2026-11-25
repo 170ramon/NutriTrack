@@ -1,5 +1,6 @@
 package com.example.nutritrack
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -8,7 +9,9 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.health.connect.client.HealthConnectClient
 import androidx.health.connect.client.PermissionController
 import com.example.nutritrack.data.HealthConnectManager
 import com.example.nutritrack.domain.*
@@ -23,19 +26,29 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun Home(hc: HealthConnectManager) {
-    // Perfil de ejemplo: luego se reemplaza por pantalla de onboarding + almacenamiento local
+    val context = LocalContext.current
     val profile = remember { Profile(Sex.MALE, 30, 175.0, 80.0, Activity.MODERATE, Goal.LOSE_FAT) }
     val t = remember { CalorieCalculator.targets(profile) }
     var steps by remember { mutableStateOf<Long?>(null) }
     var burned by remember { mutableStateOf<Double?>(null) }
-    var granted by remember { mutableStateOf(false) }
+    var status by remember { mutableStateOf("") }
+    var refresh by remember { mutableStateOf(0) }
 
-    val launcher = rememberLauncherForActivityResult(PermissionController.createRequestPermissionResultContract()) { res ->
-        granted = res.containsAll(hc.permissions)
+    val launcher = rememberLauncherForActivityResult(
+        PermissionController.createRequestPermissionResultContract()
+    ) { res ->
+        status = "Permisos concedidos: ${res.size} de ${hc.permissions.size}"
+        refresh++
     }
-    LaunchedEffect(granted) {
-        if (hc.isAvailable() && (granted || hc.hasAllPermissions())) {
-            steps = hc.stepsToday(); burned = hc.activeKcalToday()
+
+    LaunchedEffect(refresh) {
+        try {
+            if (hc.isAvailable() && hc.hasAllPermissions()) {
+                steps = hc.stepsToday()
+                burned = hc.activeKcalToday()
+            }
+        } catch (e: Exception) {
+            status = "Error: ${e.message}"
         }
     }
 
@@ -47,11 +60,22 @@ fun Home(hc: HealthConnectManager) {
         if (!hc.isAvailable()) {
             Text("Instala o actualiza Health Connect desde Google Play.")
         } else {
-            Button(onClick = { launcher.launch(hc.permissions) }) { Text("Conectar Health Connect") }
+            Button(onClick = {
+                status = "Solicitando permisos…"
+                try { launcher.launch(hc.permissions) }
+                catch (e: Exception) { status = "Error al pedir permisos: ${e.message}" }
+            }) { Text("Conectar Health Connect") }
+            OutlinedButton(onClick = {
+                try { context.startActivity(Intent(HealthConnectClient.ACTION_HEALTH_CONNECT_SETTINGS)) }
+                catch (e: Exception) { status = "No pude abrir los ajustes: ${e.message}" }
+            }) { Text("Abrir ajustes de Health Connect") }
             Text("Pasos hoy: ${steps ?: "—"}")
             Text("Calorías activas hoy: ${burned?.toInt() ?: "—"} kcal")
         }
-        Text("Las cifras son estimaciones y no sustituyen el consejo de un profesional de la salud.",
-            style = MaterialTheme.typography.bodySmall)
+        if (status.isNotEmpty()) Text(status, color = MaterialTheme.colorScheme.primary)
+        Text(
+            "Las cifras son estimaciones y no sustituyen el consejo de un profesional de la salud.",
+            style = MaterialTheme.typography.bodySmall
+        )
     }
 }
