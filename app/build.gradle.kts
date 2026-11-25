@@ -4,7 +4,7 @@ plugins {
 }
 android {
     namespace = "com.example.nutritrack"
-    compileSdk = 34
+    compileSdk = 35
     defaultConfig {
         applicationId = "com.example.nutritrack"
         minSdk = 28   // Health Connect requiere Android 9+
